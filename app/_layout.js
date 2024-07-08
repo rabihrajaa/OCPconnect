@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from "expo-router";
 import "../global.css";
 import { AuthContextProvider, useAuth } from '../context/authContext';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const MainLayout = () => {
     const { isAuthenticated } = useAuth();
@@ -27,10 +28,12 @@ const MainLayout = () => {
 
 export default function RootLayout() {
     return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthContextProvider>
             <View className="flex-1">
                 <MainLayout />
             </View>
         </AuthContextProvider>
+        </GestureHandlerRootView>
     );
 }

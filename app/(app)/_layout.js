@@ -1,9 +1,12 @@
-import { View, Text } from 'react-native'
-import React from 'react'
-import { Stack } from 'expo-router'
+import { Stack } from 'expo-router';
+import React from 'react';
+import { View, Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function _layout() {
-    return (
-        <Stack />
-    )
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <Stack />
+    </GestureHandlerRootView>
+  );
 }
