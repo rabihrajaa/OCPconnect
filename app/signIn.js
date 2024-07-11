@@ -6,11 +6,12 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import { useRouter } from 'expo-router';  // Assurez-vous d'importer useRouter correctement
 import Loading from '../components/Loading';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import CustomKeyboardView from '../components/CustomKeyboardView';
 
 export default function SignIn() {
 
     const router = useRouter(); // Initialisez router avec useRouter
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const emailRef = useRef(""); // Initialisez emailRef avec useRef
     const passwordRef = useRef(""); // Initialisez passwordRef avec useRef
 
@@ -24,7 +25,7 @@ export default function SignIn() {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <View className="flex-1">
+            <CustomKeyboardView>
                 <StatusBar style='dark' />
                 <View style={{ paddingTop: hp(8), paddingHorizontal: wp(5) }} className="flex-1 gap-12" >
                     {/*signIn image*/}
@@ -65,7 +66,7 @@ export default function SignIn() {
                             <View>
                                 {loading ? (
                                     <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-                                        <Loading size={hp(8)} />
+                                        <Loading size={hp(6.5)} />
                                     </View>
                                 ) : (
                                     <TouchableOpacity
@@ -92,7 +93,7 @@ export default function SignIn() {
 
                     </View>
                 </View>
-            </View>
+            </CustomKeyboardView>
         </GestureHandlerRootView>
     );
 }
