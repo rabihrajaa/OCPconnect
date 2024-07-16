@@ -1,19 +1,22 @@
 import { Octicons } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar'
-import React, { useRef, useState } from 'react'
-import { View, Text, Alert, Image, Pressable, TextInput, TouchableOpacity } from 'react-native'
+import { StatusBar } from 'expo-status-bar';
+import React, { useRef, useState } from 'react';
+import { View, Text, Alert, Image, Pressable, TextInput, TouchableOpacity } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { useRouter } from 'expo-router';  // Assurez-vous d'importer useRouter correctement
+import { useRouter } from 'expo-router';  // Ensure you import useRouter correctly
 import Loading from '../components/Loading';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import CustomKeyboardView from '../components/CustomKeyboardView';
+import { useAuth } from '../context/authContext';
 
 export default function SignIn() {
 
-    const router = useRouter(); // Initialisez router avec useRouter
+    const router = useRouter(); // Initialize router with useRouter
     const [loading, setLoading] = useState(false);
-    const emailRef = useRef(""); // Initialisez emailRef avec useRef
-    const passwordRef = useRef(""); // Initialisez passwordRef avec useRef
+    const { login } = useAuth();
+
+    const emailRef = useRef(""); // Initialize emailRef with useRef
+    const passwordRef = useRef(""); // Initialize passwordRef with useRef
 
     const handleLogin = async () => {
         if (!emailRef.current || !passwordRef.current) {
@@ -21,6 +24,31 @@ export default function SignIn() {
             return;
         }
         // login process
+        setLoading(true);
+        const response = await login(emailRef.current, passwordRef.current);
+        setLoading(false);
+        console.log('sign in response: ', response);
+        if (!response.success) {
+            Alert.alert('Sign In', response.msg);
+        }
+    }
+
+    const onSubmitForm = async () => {
+        console.log('why');
+        const body = {
+            email: emailRef.current,
+            password: passwordRef.current
+        };
+        console.log(body);
+        await fetch("http://10.0.2.2:5000/users/login", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        }).then().catch(err => {
+            console.log(err)
+        });
     }
 
     return (
@@ -40,10 +68,10 @@ export default function SignIn() {
                             <View style={{ height: hp(7) }} className="flex-row gap-4 bg-neutral-100 items-center rounded-xl" >
                                 <Octicons name='mail' size={hp(2.7)} color="gray" />
                                 <TextInput
-                                    onChange={value => emailRef.current = value}
+                                    onChangeText={value => emailRef.current = value}
                                     style={{ fontSize: hp(2) }}
                                     className="flex-1 font-semibold text-neutral-700"
-                                    placeholder='Email adress'
+                                    placeholder='Email address'
                                     placeholderTextColor={'gray'}
                                 />
                             </View>
@@ -51,7 +79,7 @@ export default function SignIn() {
                                 <View style={{ height: hp(7) }} className="flex-row gap-4 bg-neutral-100 items-center rounded-xl" >
                                     <Octicons name='lock' size={hp(2.7)} color="gray" />
                                     <TextInput
-                                        onChange={value => passwordRef.current = value}
+                                        onChangeText={value => passwordRef.current = value}
                                         style={{ fontSize: hp(2) }}
                                         className="flex-1 font-semibold text-neutral-700"
                                         placeholder='Password'

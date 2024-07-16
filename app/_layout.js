@@ -4,12 +4,13 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import "../global.css";
 import { AuthContextProvider, useAuth } from '../context/authContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { MenuProvider } from 'react-native-popup-menu';
 
 const MainLayout = () => {
     const { isAuthenticated } = useAuth();
     const segments = useSegments();
     const router = useRouter();
-   
+
     useEffect(() => {
         // check if user is authenticated or not
         if (typeof isAuthenticated == 'undefined') return;
@@ -29,11 +30,14 @@ const MainLayout = () => {
 export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-        <AuthContextProvider>
-            <View className="flex-1">
-                <MainLayout />
-            </View>
-        </AuthContextProvider>
+            <MenuProvider>
+                <AuthContextProvider>
+                    <View className="flex-1">
+                        <MainLayout />
+                    </View>
+                </AuthContextProvider>
+            </MenuProvider>
+
         </GestureHandlerRootView>
     );
 }
