@@ -3,7 +3,7 @@ import React from "react";
 import ChatItem from "./ChatItem";
 import { useRouter } from "expo-router/build";
 
-export default function ChatListe({ users }) {
+export default function ChatListe({ users,currentUser }) {
     const router=useRouter();
     return (
         <View>
@@ -15,7 +15,9 @@ export default function ChatListe({ users }) {
                 renderItem={({ item, index }) => <ChatItem 
                                                         noBorder={index+1 == users.length} 
                                                         router={router} 
-                                                        item={item} index={index} 
+                                                        currentUser={currentUser}
+                                                        item={item} 
+                                                        index={index} 
                                                 />}
            
            />

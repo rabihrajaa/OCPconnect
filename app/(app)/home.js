@@ -53,7 +53,7 @@ export default function Home() {
                         <Loading size={hp(10)} />
                     </View>
                 ) : (
-                    <ChatListe users={users} />
+                    <ChatListe currentUser={user} users={users} />
                 )}
             </View>
         </GestureHandlerRootView>

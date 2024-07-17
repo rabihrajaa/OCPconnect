@@ -1,8 +1,16 @@
-import React from "react";
-import { Text, View } from "react-native";
-
-export default function MessagesList(){
-    <View>
-        <Text>MessagesList</Text>
-    </View>
+import { View, Text, ScrollView } from 'react-native'
+import React from 'react'
+import MessageItem from './MessageItem'
+export default function MessageList({ messages,ScrollViewRef,currentUser }) {
+    return (
+        <ScrollView ref={ScrollViewRef} shows VerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 10 }}>
+            {
+                messages.map((message, index) => {
+                    return (
+                        <MessageItem message={message} key={index} currentUser={currentUser} />
+                    )
+                })
+            }
+        </ScrollView>
+    )
 }
