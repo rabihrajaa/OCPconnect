@@ -108,7 +108,14 @@ export default function ChatRoom() {
     
             console.log('new message id: ', newDoc.id);
         } catch (err) {
-            Alert.alert('Message', err.message);
+            Alert.alert(
+                'Erreur',
+                err.message,
+                [
+                  { text: 'OK', onPress: () => console.log('OK Pressed') }
+                ],
+                { cancelable: false }
+              );
         }
     }
     

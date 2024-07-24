@@ -5,7 +5,7 @@ import {
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
 
-export const MenuItem = ({ text, action, value, icon }) => {
+export const MenuItem = ({ text, action, value, icon, color }) => {
     return (
         <MenuOption onSelect={()=>action(value)}>
             <View className="px-4 py-1 flex-row justify-between items-center">
