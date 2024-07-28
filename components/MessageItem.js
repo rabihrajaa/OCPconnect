@@ -1,31 +1,61 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, Alert, Clipboard } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { Menu, MenuOptions, MenuTrigger, MenuOption } from 'react-native-popup-menu';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MenuItem } from "./CustomMenuItems";
 import styles from '../styles/MessageItemStyles'; // Assurez-vous que ce chemin est correct
+import { getDoc, doc, getDocs, collection } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { deleteMessageForMe, deleteMessageForEveryone } from '../utils/messageService';
 
-export default function MessageItem({ message, currentUser, deleteMessageForMe, deleteMessageForEveryone }) {
+export default function MessageItem({ message, currentUser, onMessageDeleted }) {
     const isCurrentUser = currentUser?.userId === message?.userId;
     const isRead = message?.isRead;
     const messageTime = message?.createdAt
         ? new Date(message.createdAt.seconds * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
         : 'Unknown time';
 
-    const handleDeleteForMe = () => {
-        if (message?.id) {
-            deleteMessageForMe(message.roomId, message.id); // Passez le roomId et messageId
-        } else {
-            console.error("Message ID is missing");
+    const getRoomIdFromMessageId = async (messageId) => {
+        try {
+            const roomsSnapshot = await getDocs(collection(db, 'rooms'));
+
+            for (const roomDoc of roomsSnapshot.docs) {
+                const messagesRef = collection(roomDoc.ref, 'messages');
+                const messageDocRef = doc(messagesRef, messageId);
+                const messageDoc = await getDoc(messageDocRef);
+
+                if (messageDoc.exists()) {
+                    return roomDoc.id;
+                }
+            }
+
+            console.error(`Message with ID ${messageId} not found in any room.`);
+            return null;
+        } catch (error) {
+            console.error('Error getting room ID from message ID:', error);
+            return null;
         }
     };
 
-    const handleDeleteForEveryone = () => {
-        if (message?.id) {
-            deleteMessageForEveryone(message.roomId, message.id); // Passez le roomId et messageId
+    const handleDeleteForMe = async () => {
+        const roomId = await getRoomIdFromMessageId(message?.id);
+        Alert.alert('roomid', roomId);
+        if (message?.id && roomId) {
+            await deleteMessageForMe(roomId, message.id);
+            onMessageDeleted(); // Appeler la fonction de mise à jour après la suppression
         } else {
-            console.error("Message ID is missing");
+            console.error("Message ID or Room ID is missing");
+        }
+    };
+
+    const handleDeleteForEveryone = async () => {
+        const roomId = await getRoomIdFromMessageId(message?.id);
+        if (message?.id && roomId) {
+            await deleteMessageForEveryone(roomId, message.id);
+            onMessageDeleted(); // Appeler la fonction de mise à jour après la suppression
+        } else {
+            console.error("Message ID or Room ID is missing");
         }
     };
 

@@ -10,34 +10,6 @@ export default function MessageList({ messages, ScrollViewRef, currentUser }) {
         setMessageList(messages || []);
     }, [messages]);
 
-    const handleDeleteMessageForMe = async (roomId, messageId) => {
-        if (!roomId || !messageId) {
-            console.error("Invalid parameters for deleting message for me:", { roomId, messageId });
-            return;
-        }
-
-        try {
-            await deleteMessageForMe(roomId, messageId);
-            setMessageList(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
-        } catch (error) {
-            console.error("Error deleting message for me: ", error);
-        }
-    };
-
-    const handleDeleteMessageForEveryone = async (roomId, messageId) => {
-        if (!roomId || !messageId) {
-            console.error("Invalid parameters for deleting message for everyone:", { roomId, messageId });
-            return;
-        }
-
-        try {
-            await deleteMessageForEveryone(roomId, messageId);
-            setMessageList(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
-        } catch (error) {
-            console.error("Error deleting message for everyone: ", error);
-        }
-    };
-
     return (
         <ScrollView ref={ScrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 10 }}>
             {messageList.length === 0 ? (
