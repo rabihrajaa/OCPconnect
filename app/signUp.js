@@ -9,7 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import CustomKeyboardView from '../components/CustomKeyboardView';
 import { useAuth } from '../context/authContext';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadImage, sentEmailverification } from '../utils/common';
+import { uploadImage, sentVerificationEmail } from '../utils/common'; // Utilisation de la fonction mise à jour
 
 export default function SignUp() {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function SignUp() {
     const response = await register(emailRef.current, passwordRef.current, usernameRef.current, profileImage);
 
     if (response.success) {
-      const emailSent = await sentEmailverification(emailRef.current);
+      const emailSent = await sentVerificationEmail(); // Utilisation de la nouvelle fonction pour envoyer l'email de vérification
       if (emailSent) {
         Alert.alert('Sign Up', 'Please verify your email to complete the registration.');
         router.push('signIn');
@@ -72,7 +72,7 @@ export default function SignUp() {
 
     if (!result.canceled) {
       try {
-        const uploadedImageUrl = await uploadImage(result.assets[0].uri); 
+        const uploadedImageUrl = await uploadImage(result.assets[0].uri);
         if (uploadedImageUrl) {
           setProfileImage(uploadedImageUrl);
         } else {
@@ -92,9 +92,9 @@ export default function SignUp() {
         <View style={{ paddingTop: wd(7), paddingHorizontal: wd(5) }} className="flex-1 gap-12">
           <View className="items-center">
             <TouchableOpacity onPress={() => setModalVisible(true)}>
-              <Image 
-                source={{ uri: profileImage || "https://www.globalfabrications.in/images/user-Icon.jpg" }} 
-                style={styles.profileImage} 
+              <Image
+                source={{ uri: profileImage || "https://www.globalfabrications.in/images/user-Icon.jpg" }}
+                style={styles.profileImage}
               />
               <TouchableOpacity style={styles.editImageButton} onPress={() => setModalVisible(true)}>
                 <Entypo name="camera" size={wd(5)} color="white" />
@@ -213,15 +213,17 @@ const styles = StyleSheet.create({
     width: wd(25),
     height: wd(25),
     borderRadius: wd(12.5),
-    marginBottom: wd(1),
   },
   editImageButton: {
+    width: wd(8),
+    height: wd(8),
+    borderRadius: wd(4),
+    backgroundColor: '#6366F1',
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#6366F1',
-    padding: wd(1),
-    borderRadius: wd(5),
   },
   modalContainer: {
     flex: 1,
@@ -231,27 +233,30 @@ const styles = StyleSheet.create({
   },
   modalView: {
     width: wp(80),
-    padding: wd(5),
+    padding: 20,
     backgroundColor: 'white',
-    borderRadius: 15,
+    borderRadius: 10,
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: wd(4),
+    fontSize: wp(5),
     fontWeight: 'bold',
-    marginBottom: wd(5),
+    marginBottom: 15,
   },
   iconRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     width: '100%',
   },
   iconButton: {
+    justifyContent: 'center',
     alignItems: 'center',
+    marginHorizontal: 10,
   },
   iconLabel: {
-    marginTop: wd(1),
-    fontSize: wd(2.5),
+    marginTop: 5,
+    fontSize: wp(3),
     color: '#6366F1',
+    fontWeight: 'bold',
   },
 });

@@ -4,20 +4,34 @@ import { getStorage, ref, uploadBytes, getDownloadURL,deleteObject } from "fireb
 
 import { getAuth, sendPasswordResetEmail ,sendEmailVerification, createUserWithEmailAndPassword} from "firebase/auth";
 
-export const sentEmailVerification = async (email) => {
-  try {
-    const auth = getAuth();
-    const user = auth.currentUser;
 
-    if (user) {
-      await sendEmailVerification(user);
-      return true; // Succès de l'envoi
-    } else {
-      throw new Error('No user is signed in.');
+export const sendResetPasswordEmail = async (email) => {
+    const auth = getAuth();
+    try {
+        await sendPasswordResetEmail(auth, email);
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to send reset password email:', error.message);
+        return { success: false, msg: 'Failed to send reset password email. Please try again.' };
     }
-  } catch (error) {
-    console.error('Error sending email verification:', error);
-    return false; // Échec de l'envoi
+};
+
+
+export const sentVerificationEmail = async () => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (user) {
+    try {
+      await sendEmailVerification(user);
+      return true;
+    } catch (error) {
+      console.error('Failed to send verification email:', error.message);
+      return false;
+    }
+  } else {
+    console.error('No user is logged in to send a verification email.');
+    return false;
   }
 };
 
