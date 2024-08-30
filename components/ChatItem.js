@@ -29,14 +29,14 @@ export default function ChatItem({ item, router, noBorder, currentUser, inChat }
             unsubMessages();
         };
     }, [currentUser, item, inChat]);
-
-    useEffect(() => {
-        if (inChat) {
-            Alert.alert("inchat", "inchat");
-        } else {
-            Alert.alert("outchat", "outchat");
-        }
-    }, [inChat]);
+    
+    // useEffect(() => {
+    //     if (inChat) {
+    //         Alert.alert("inchat", "inchat");
+    //     } else {
+    //         Alert.alert("outchat", "outchat");
+    //     }
+    // }, [inChat]);
 
     const markMessagesAsRead = async () => {
         const roomId = getRoomId(currentUser?.userId, item?.userId);

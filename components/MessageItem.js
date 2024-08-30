@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Alert, Clipboard } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Alert, Modal, TouchableOpacity, Clipboard, StyleSheet } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { Menu, MenuOptions, MenuTrigger, MenuOption } from 'react-native-popup-menu';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -10,6 +10,9 @@ import { db } from '../firebaseConfig';
 import { deleteMessageForMe, deleteMessageForEveryone } from '../utils/messageService';
 
 export default function MessageItem({ message, currentUser, onMessageDeleted }) {
+    const [emoji, setEmoji] = useState('emoji-emotions'); // Default emoji icon
+    const [isModalVisible, setIsModalVisible] = useState(false);
+
     const isCurrentUser = currentUser?.userId === message?.userId;
     const isRead = message?.isRead;
     const messageTime = message?.createdAt
@@ -40,7 +43,6 @@ export default function MessageItem({ message, currentUser, onMessageDeleted }) 
 
     const handleDeleteForMe = async () => {
         const roomId = await getRoomIdFromMessageId(message?.id);
-        Alert.alert('roomid', roomId);
         if (message?.id && roomId) {
             await deleteMessageForMe(roomId, message.id);
             onMessageDeleted(); // Appeler la fonction de mise à jour après la suppression
@@ -71,6 +73,20 @@ export default function MessageItem({ message, currentUser, onMessageDeleted }) 
     const handleReactWithEmoji = (emoji) => {
         Alert.alert('Reaction', `Reacted with ${emoji}`);
     };
+
+    const openEmojiPicker = () => {
+        setIsModalVisible(true);
+    };
+
+    const selectEmoji = (selectedEmoji) => {
+        setEmoji(selectedEmoji);
+        setIsModalVisible(false);
+    };
+
+    const emojiList = [
+        'emoji-emotions', 'emoji-people', 'emoji-nature', 'emoji-objects', 'emoji-symbols', 'emoji-flags',
+        'sentiment-satisfied', 'sentiment-dissatisfied', 'sentiment-neutral', 'sentiment-very-satisfied', 'sentiment-very-dissatisfied'
+    ];
 
     return (
         <View style={isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer}>
@@ -126,27 +142,31 @@ export default function MessageItem({ message, currentUser, onMessageDeleted }) 
 
             {/* React Menu */}
             <Menu>
-                <MenuTrigger>
-                    <Icon name="emoji-emotions" size={hp(2.5)} color="gray" style={styles.reactIcon} />
+                <MenuTrigger onPress={openEmojiPicker}>
+                    <Icon name={emoji} size={hp(3)} color="gray" style={styles.reactIcon} />
                 </MenuTrigger>
-                <MenuOptions customStyles={styles.reactMenuOptions}>
-                    <MenuOption onSelect={() => handleReactWithEmoji('😀')}>
-                        <Text style={styles.emoji}>😀</Text>
-                    </MenuOption>
-                    <MenuOption onSelect={() => handleReactWithEmoji('❤️')}>
-                        <Text style={styles.emoji}>❤️</Text>
-                    </MenuOption>
-                    <MenuOption onSelect={() => handleReactWithEmoji('👍')}>
-                        <Text style={styles.emoji}>👍</Text>
-                    </MenuOption>
-                    <MenuOption onSelect={() => handleReactWithEmoji('😢')}>
-                        <Text style={styles.emoji}>😢</Text>
-                    </MenuOption>
-                    <MenuOption onSelect={() => handleReactWithEmoji('😡')}>
-                        <Text style={styles.emoji}>😡</Text>
-                    </MenuOption>
-                </MenuOptions>
             </Menu>
+
+            {/* Emoji Picker Modal */}
+            <Modal visible={isModalVisible} transparent={true} animationType="slide">
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Choose an Emoji</Text>
+                        <View style={styles.emojiList}>
+                            {emojiList.map((emoj) => (
+                                <TouchableOpacity key={emoj} onPress={() => selectEmoji(emoj)}>
+                                    <Icon name={emoj} size={hp(5)} color="gray" style={styles.emojiIcon} />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        <TouchableOpacity style={styles.closeButton} onPress={() => setIsModalVisible(false)}>
+                            <Text style={styles.closeButtonText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
-    );
+    );   
 }
+
+

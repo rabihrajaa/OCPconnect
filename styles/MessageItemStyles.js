@@ -88,11 +88,47 @@ const styles = StyleSheet.create({
         },
     },
     emoji: {
-        fontSize: hp(2.5),
+        fontSize: hp(4),
         marginHorizontal: wp(1),
     },
     reactIcon: {
         marginLeft: wp(1),
+    },
+    //css for modal
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        width: wp('80%'),
+        padding: 20,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 18,
+        marginBottom: 20,
+    },
+    emojiList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+    },
+    emojiIcon: {
+        margin: 10,
+    },
+    closeButton: {
+        marginTop: 20,
+        padding: 10,
+        backgroundColor: 'gray',
+        borderRadius: 5,
+    },
+    closeButtonText: {
+        color: 'white',
+        fontSize: 16,
     },
 });
 
