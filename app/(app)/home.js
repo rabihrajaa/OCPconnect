@@ -8,6 +8,7 @@ import ChatListe from '../../components/ChatList';
 import Loading from '../../components/Loading';
 import { userRef } from '../../firebaseConfig';
 import { query, where, getDocs } from 'firebase/firestore';
+import FooterMenu from '../../components/FooterMenu'; // Importez le composant FooterMenu
 
 export default function Home() {
     const { logout, user } = useAuth();
@@ -55,6 +56,7 @@ export default function Home() {
                 ) : (
                     <ChatListe currentUser={user} users={users} />
                 )}
+                <View style={{ position: 'absolute', bottom: 0, width: '100%', height: 60 }} ><FooterMenu /></View>
             </View>
         </GestureHandlerRootView>
     );

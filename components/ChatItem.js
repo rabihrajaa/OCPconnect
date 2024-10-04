@@ -88,7 +88,7 @@ export default function ChatItem({ item, router, noBorder, currentUser, inChat }
                 return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
             }
         }
-        return 'Time';
+        return '';
     };
 
     const renderLastMessage = () => {
@@ -97,7 +97,7 @@ export default function ChatItem({ item, router, noBorder, currentUser, inChat }
                 ? `You: ${lastMessage?.text}`
                 : lastMessage?.text;
         }
-        return 'Loading...';
+        return '';
     };
 
     return (
