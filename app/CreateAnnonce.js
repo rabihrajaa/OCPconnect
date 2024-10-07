@@ -6,6 +6,8 @@ import { uploadImage } from '../utils/common'; // Votre fonction pour uploader l
 import { db } from '../firebaseConfig'; // Importez votre configuration Firebase
 import { collection, addDoc } from 'firebase/firestore'; // Importez ces fonctions
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import Header from '../components/Header';
+import FooterMenu from '../components/FooterMenu';
 
 export default function CreateAnnounceScreen() {
   const [title, setTitle] = useState('');
@@ -87,7 +89,9 @@ export default function CreateAnnounceScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create Announcement</Text>
+      <View style={{paddingTop:20,marginBottom:40}}>
+       <Header onGoBack={() => router.back()} content="Create Announcement"/>
+       </View>
 
       <TextInput
         style={styles.input}
@@ -121,7 +125,9 @@ export default function CreateAnnounceScreen() {
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
-
+      <View style={{ position: 'absolute', bottom: 0, width: '112%', height: 60 }} >
+                    <FooterMenu />
+                </View>
       <Modal
         animationType="slide"
         transparent={true}

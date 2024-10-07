@@ -2,14 +2,15 @@ import React, { useEffect, useState } from "react";
 import { View, FlatList, Text, TextInput, StyleSheet } from "react-native";
 import ChatItem from "./ChatItem";
 import { useRouter } from "expo-router";
-import { collection, query, orderBy, onSnapshot, where, limit } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { db } from '../firebaseConfig';  // Assurez-vous d'avoir configuré Firebase correctement
+import { Ionicons } from '@expo/vector-icons'; // Importation de l'icône
 
 export default function ChatListe({ users, currentUser }) {
     const router = useRouter();
     const [sortedUsers, setSortedUsers] = useState([]);
-    const [searchQuery, setSearchQuery] = useState(''); // État pour la recherche
-    const [filteredUsers, setFilteredUsers] = useState([]); // État pour les utilisateurs filtrés
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredUsers, setFilteredUsers] = useState([]);
 
     useEffect(() => {
         const unsubscribeListeners = [];
@@ -58,7 +59,6 @@ export default function ChatListe({ users, currentUser }) {
         };
     }, [users, currentUser]);
 
-    // Fonction de filtrage
     const filterUsers = (query) => {
         const filtered = sortedUsers.filter(user =>
             user.username.toLowerCase().includes(query.toLowerCase())
@@ -67,7 +67,7 @@ export default function ChatListe({ users, currentUser }) {
     };
 
     useEffect(() => {
-        filterUsers(searchQuery); // Appliquer le filtre à chaque changement de recherche
+        filterUsers(searchQuery);
     }, [searchQuery, sortedUsers]);
 
     if (!filteredUsers || filteredUsers.length === 0) {
@@ -80,13 +80,16 @@ export default function ChatListe({ users, currentUser }) {
 
     return (
         <View style={styles.container}>
-            {/* Barre de recherche */}
-            <TextInput
-                style={styles.searchInput}
-                placeholder="Rechercher un utilisateur"
-                value={searchQuery}
-                onChangeText={setSearchQuery} // Mettre à jour l'état de la recherche
-            />
+            {/* Barre de recherche avec icône */}
+            <View style={styles.searchContainer}>
+                <Ionicons name="search" size={24} color="#4267B2" style={styles.searchIcon} />
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search user.."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+            </View>
 
             <FlatList
                 data={filteredUsers}
@@ -112,12 +115,32 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 20,
     },
-    searchInput: {
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         borderWidth: 1,
         borderColor: '#ccc',
-        borderRadius: 5,
-        padding: 10,
+        borderRadius: 25, // Rounded corners
         marginBottom: 20,
+        paddingHorizontal: 15,
+        backgroundColor: '#fff',
+        shadowColor: '#000', // Adding shadow for depth
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3, // For Android shadow
+    },
+    searchIcon: {
+        marginRight: 10,
+    },
+    searchInput: {
+        flex: 1,
+        paddingVertical: 10,
+        fontSize: 16,
+        color: '#333', // Darker text for better readability
     },
 });
 

@@ -1,12 +1,13 @@
 import React, { useState, useRef } from "react";
 import { View, Text, TextInput, Alert, TouchableOpacity, Image, Modal, StyleSheet, Button } from "react-native";
 import { useAuth } from "../context/authContext";
-import { updateUserProfile, uploadImage, deleteOldImage, sendPasswordReset } from "../utils/common"; 
+import { updateUserProfile, uploadImage, deleteOldImage, sendPasswordReset } from "../utils/common";
 import { Entypo } from "@expo/vector-icons";
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
 import Loading from '../components/Loading';
+import Header from "../components/Header";
 
 export default function EditProfileScreen() {
   const { user, setUser } = useAuth();
@@ -75,7 +76,7 @@ export default function EditProfileScreen() {
     if (!result.canceled) {
       try {
         await deleteOldImage(oldProfileImageRef.current);
-        const uploadedImageUrl = await uploadImage(result.assets[0].uri); 
+        const uploadedImageUrl = await uploadImage(result.assets[0].uri);
         if (uploadedImageUrl) {
           setProfileImage(uploadedImageUrl);
         } else {
@@ -107,13 +108,9 @@ export default function EditProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Entypo name="chevron-left" size={hp(4)} color="#737373" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Edit Profile</Text>
-      </View>
-
+      <View style={{paddingTop:20,marginBottom:40}}>
+       <Header onGoBack={() => router.back()} content="Edit Profile"/>
+       </View>
       <View style={styles.imageContainer}>
         <Image
           source={{ uri: profileImage || "https://www.globalfabrications.in/images/user-Icon.jpg" }}
@@ -136,7 +133,7 @@ export default function EditProfileScreen() {
         defaultValue={username}
         onChangeText={(text) => (usernameRef.current = text)}
       />
-      
+
       {loading ? (
         <Loading size={hp(6.5)} />
       ) : (
@@ -153,32 +150,37 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
       )}
 
-<Modal
-  animationType="slide"
-  transparent={true}
-  visible={modalVisible}
-  onRequestClose={() => setModalVisible(false)}
->
-  <View style={styles.modalContainer}>
-    <View style={styles.modalView}>
-      <Text style={styles.modalTitle}>Choose an option</Text>
-      <View style={styles.iconRow}>
-        <TouchableOpacity onPress={() => pickImage(true)} style={styles.iconButton}>
-          <Entypo name="camera" size={hp(5)} color="#6366F1" />
-          <Text style={styles.iconLabel}>Camera</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => pickImage(false)} style={styles.iconButton}>
-          <Entypo name="image" size={hp(5)} color="#6366F1" />
-          <Text style={styles.iconLabel}>Gallery</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.iconButton}>
-          <Entypo name="cross" size={hp(5)} color="red" />
-          <Text style={styles.iconLabel}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-</Modal>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Choose an option</Text>
+            <View style={styles.iconRow}>
+              <TouchableOpacity onPress={() => pickImage(true)} style={styles.iconButton}>
+                <Entypo name="camera" size={hp(5)} color="#4267B2" />
+                <Text style={styles.iconLabel}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => pickImage(false)} style={styles.iconButton}>
+                <Entypo name="image" size={hp(5)} color="#4267B2" />
+                <Text style={styles.iconLabel}>Gallery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.iconButton}>
+                <Entypo name="cross" size={hp(5)} color="red" />
+                <Text style={{
+                  marginTop: hp(0.5),
+                  fontSize: hp(2),
+                  color: 'red',
+                  fontWeight: 'bold'
+                }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -208,7 +210,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     height: hp(6.5),
-    backgroundColor: '#6366F1',
+    backgroundColor: '#4267B2',
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
@@ -234,7 +236,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: wp(30), // Ajuste la position à droite
-    backgroundColor: '#6366F1', // Couleur de fond modifiée
+    backgroundColor: '#4267B2', // Couleur de fond modifiée
     borderRadius: 15,
     padding: 8, // Augmenter le padding pour agrandir le bouton
     width: wp(13), // Largeur du bouton
@@ -278,17 +280,7 @@ const styles = StyleSheet.create({
   iconLabel: {
     marginTop: hp(0.5),
     fontSize: hp(2),
-    color: '#6366F1',
+    color: '#4267B2',
     fontWeight: 'bold',
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: wp(0.5),
-    marginBottom: hp(10),
-    marginTop: hp(2),
-  },
-  backButton: {
-    marginRight: wp(1),
   },
 });

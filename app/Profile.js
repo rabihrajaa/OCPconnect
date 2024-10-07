@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, View, Text, Button, StyleSheet, Image, TouchableOpacity } from "react-native";
+import { ScrollView, View, Text, Button, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Entypo, MaterialIcons } from "@expo/vector-icons";
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/authContext";
+import Header from "../components/Header";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -13,21 +14,27 @@ export default function ProfileScreen() {
   const { user } = useAuth();
   
   const [currentProfileUrl, setCurrentProfileUrl] = useState(user.profileUrl);
-
-  // useEffect(() => {
-  //   setCurrentProfileUrl(profileUrl || user.profileUrl);
-  // }, [profileUrl, user.profileUrl]);
+  const [loading, setLoading] = useState(false); // État de chargement
 
   const handleImageError = () => {
     setCurrentProfileUrl("https://cdn.vectorstock.com/i/500x500/50/29/user-icon-male-person-symbol-profile-avatar-vector-20715029.jpg");
   };
 
+  const handleEditProfile = async () => {
+    setLoading(true); // Commencer le chargement
+    try {
+      await router.push(`/EditProfile?userId=${user.userId}&username=${username}&email=${email}&profileUrl=${currentProfileUrl}`);
+    } finally {
+      setLoading(false); // Terminer le chargement
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollViewContainer}>
+      <View style={{paddingTop:20}}>
+       <Header onGoBack={() => router.push(`/(app)/home`)} content="Profile"/>
+       </View>
       <View style={[styles.profileHeader, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => router.push(`/(app)/home`)} style={styles.backButton}>
-          <Entypo name="chevron-left" size={hp(4)} color="#737373" />
-        </TouchableOpacity>
         <Image 
           source={{ uri: currentProfileUrl || "https://www.globalfabrications.in/images/user-Icon.jpg" }}
           style={styles.profileImage} 
@@ -37,7 +44,7 @@ export default function ProfileScreen() {
         <View style={styles.infoContainer}>
           <View style={styles.info}>
             <View style={styles.iconContainer}>
-              <MaterialIcons name="email" size={24} color="#007BFF" />
+              <MaterialIcons name="email" size={30} color="#4267B2" />
             </View>
             <Text style={styles.infoText}>{email || "example@gmail.com"}</Text>
           </View>
@@ -45,11 +52,13 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.buttonContainer}>
-        <Button
-          title="Edit Profile"
-          onPress={() => router.push(`/EditProfile?userId=${user.userId}&username=${username}&email=${email}&profileUrl=${currentProfileUrl}`)}
-          color="#007BFF"
-        />
+        <TouchableOpacity onPress={handleEditProfile} style={styles.editButton} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.editButtonText}>Edit Profile</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -120,5 +129,16 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingHorizontal: 20,
+  },
+  editButton: {
+    backgroundColor: "#4267B2",
+    borderRadius: 10,
+    padding: 15,
+    alignItems: "center",
+  },
+  editButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

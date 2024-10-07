@@ -158,20 +158,36 @@ export default function SignUp() {
               ) : (
                 <TouchableOpacity
                   onPress={handleRegister}
-                  style={{ height: wd(6.5), backgroundColor: '#6366F1', borderRadius: 15, justifyContent: 'center', alignItems: 'center' }}
+                  style={{
+                    height: wd(6.5),
+                    backgroundColor: '#4267B2',
+                    borderRadius: 15,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingVertical: 0, // Remove vertical padding
+                    marginVertical: 0, // Remove vertical margin if present
+                  }}
                 >
-                  <Text style={{ fontSize: wd(2.7), color: 'white', fontWeight: 'bold', letterSpacing: 1 }}>
+                  <Text style={{
+                    fontSize: wd(2.7),
+                    color: 'white',
+                    fontWeight: 'bold',
+                    letterSpacing: 1,
+                    margin: 0, // Remove margin if present
+                    padding: 0, // Remove padding if present
+                  }}>
                     Sign Up
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
-
-            <View className="flex-row justify-center">
-              <Text style={{ fontSize: wd(1.8) }} className="font-semibold text-neutral-500">Already have an account? </Text>
-              <Pressable onPress={() => router.push('signIn')}>
-                <Text style={{ fontSize: wd(1.8) }} className="font-bold text-indigo-500">Sign In</Text>
-              </Pressable>
+            <View style={{ paddingBottom: 30 }}>
+              <View className="flex-row justify-center">
+                <Text style={{ fontSize: wd(1.8) }} className="font-semibold text-neutral-500">Already have an account? </Text>
+                <Pressable onPress={() => router.push('signIn')}>
+                  <Text style={{ fontSize: wd(2), color: '#4267B2' }} className="font-bold">Sign Up</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </View>
@@ -188,16 +204,21 @@ export default function SignUp() {
               <Text style={styles.modalTitle}>Choose an option</Text>
               <View style={styles.iconRow}>
                 <TouchableOpacity onPress={() => pickImage(true)} style={styles.iconButton}>
-                  <Entypo name="camera" size={wd(5)} color="#6366F1" />
+                  <Entypo name="camera" size={wd(5)} color="#4267B2" />
                   <Text style={styles.iconLabel}>Camera</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => pickImage(false)} style={styles.iconButton}>
-                  <Entypo name="image" size={wd(5)} color="#6366F1" />
+                  <Entypo name="image" size={wd(5)} color="#4267B2" />
                   <Text style={styles.iconLabel}>Gallery</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.iconButton}>
                   <Entypo name="cross" size={wd(5)} color="red" />
-                  <Text style={styles.iconLabel}>Cancel</Text>
+                  <Text style={{
+                    marginTop: 5,
+                    fontSize: wp(4),
+                    color: 'red',
+                    fontWeight: 'bold'
+                  }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -218,7 +239,7 @@ const styles = StyleSheet.create({
     width: wd(8),
     height: wd(8),
     borderRadius: wd(4),
-    backgroundColor: '#6366F1',
+    backgroundColor: '#4267B2',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
@@ -255,8 +276,8 @@ const styles = StyleSheet.create({
   },
   iconLabel: {
     marginTop: 5,
-    fontSize: wp(3),
-    color: '#6366F1',
+    fontSize: wp(4),
+    color: '#4267B2',
     fontWeight: 'bold',
   },
 });
