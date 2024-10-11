@@ -6,20 +6,12 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 export default function CommentItem({ comment, onDelete, onReply, onDeleteReply }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
-  const [replyText, setReplyText] = useState('');
   const [showReplies, setShowReplies] = useState(false);
 
   const handleDeleteComment = () => {
     onDelete(comment.id);
   };
 
-  const handleReplyComment = () => {
-    if (replyText.trim()) {
-      onReply(comment.id, replyText);
-      setReplyText('');
-      setIsReplying(false);
-    }
-  };
 
   const openEmojiPicker = () => {
     setIsModalVisible(true);
@@ -48,7 +40,7 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
         </View>
         <Text style={styles.commentText}>{comment.text}</Text>
         <View style={styles.actionsContainer}>
-          <TouchableOpacity onPress={() => setIsReplying(!isReplying)}>
+          <TouchableOpacity onPress={() =>onReply(comment.id)}>
             <Icon name="reply" size={18} color="#666" />
           </TouchableOpacity>
           <Menu>
@@ -63,20 +55,6 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
             <Icon name="emoji-emotions" size={18} color="#666" />
           </TouchableOpacity>
         </View>
-
-        {isReplying && (
-          <View style={styles.replyInputContainer}>
-            <TextInput
-              value={replyText}
-              onChangeText={setReplyText}
-              placeholder="Write a reply..."
-              style={styles.replyInput}
-            />
-            <TouchableOpacity onPress={handleReplyComment}>
-              <Icon name="send" size={24} color="#007BFF" />
-            </TouchableOpacity>
-          </View>
-        )}
 
         {comment.replies && comment.replies.length > 0 && (
           <TouchableOpacity onPress={() => setShowReplies(!showReplies)} style={styles.showRepliesButton}>
@@ -172,18 +150,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  replyInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  replyInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 5,
-  },
+  
   showRepliesButton: {
     marginTop: 5,
     alignSelf: 'flex-end', // Move the button to the right
