@@ -7,43 +7,66 @@ import FooterMenu from './../components/FooterMenu';
 import Header from '../components/Header';
 import { WebView } from 'react-native-webview';
 import { useAuth } from '../context/authContext';
+import { FontAwesome, FontAwesome5 } from '@expo/vector-icons'; // Utilisation des icônes FontAwesome5 pour certaines icônes
 
 const Annonce = () => {
   const navigation = useNavigation();
   const [posts, setPosts] = useState([]);
   const [selectedMedia, setSelectedMedia] = useState(null);
-  const [emojiModalVisible, setEmojiModalVisible] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState({});
   const [expandedMedia, setExpandedMedia] = useState({});
-  const [currentPostId, setCurrentPostId] = useState(null);
   const { user } = useAuth();
-  const [currentUser,setcurrentUser] = useState(user.username); // Remplacez par votre logique d'authentification utilisateur
-
-  const handleGoBack = () => {
-    navigation.goBack();
-  };
+  const [currentUser, setCurrentUser] = useState(user.username); // Remplacez par votre logique d'authentification utilisateur
+  const [userProfileUrl, setUserProfileUrl] = useState({});
 
   const fetchPosts = async () => {
     const postsCollection = collection(db, 'annonces');
-    const postsSnapshot = await getDocs(postsCollection);
-    const postsList = postsSnapshot.docs.map(doc => {
-      const data = doc.data();
-      console.log(data); // Ajoutez cette ligne pour voir la structure des données
-      // Vérifiez et initialisez likes comme un tableau vide si ce n'est pas un tableau
-      return {
-        id: doc.id,
-        ...data,
-        likes: Array.isArray(data.likes) ? data.likes : [] // S'assurez que likes est un tableau
-      };
-    });
-    setPosts(postsList);
-  };
+    
+    try {
+      const postsSnapshot = await getDocs(postsCollection);
+      const postsList = await Promise.all(postsSnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        
+        // Récupération des commentaires pour chaque post
+        const commentsCollection = collection(db, 'annonces', doc.id, 'comments');
+        const commentsSnapshot = await getDocs(commentsCollection);
+        
+        // Compter le nombre de commentaires
+        const totalComments = commentsSnapshot.size;
   
+        // Calculer le nombre total de réponses
+        const totalReplies = commentsSnapshot.docs.reduce((acc, commentDoc) => {
+          const commentData = commentDoc.data();
+          const repliesCount = Array.isArray(commentData.replies) ? commentData.replies.length : 0;
+          return acc + repliesCount;
+        }, 0);
+        
+        return {
+          id: doc.id,
+          ...data,
+          likes: Array.isArray(data.likes) ? data.likes : [],
+          totalCommentsAndReplies: totalComments + totalReplies, // Total des commentaires et réponses
+        };
+      }));
+      
+      console.log("Rendering post.totalCommentsAndReplies:", postsList);
+      setPosts(postsList);
+    } catch (error) {
+      console.error('Erreur lors du fetch des posts :', error);
+    }
+  };
 
   useEffect(() => {
     fetchPosts();
   }, []);
-  //date formate
+
+  useEffect(() => {
+    if (posts.length > 0) {
+      loadProfileUrls(); // Chargement des URLs des profils après que les posts sont récupérés
+    }
+  }, [posts]);
+
+
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
@@ -52,35 +75,26 @@ const Annonce = () => {
   const handleLike = async (postId, emojiType) => {
     const postRef = doc(db, 'annonces', postId);
     const post = posts.find(p => p.id === postId);
-    
-    // Vérifiez si l'utilisateur a déjà réagi
+
     const existingReactionIndex = post.likes.findIndex(like => like.username === currentUser);
-    
-    // Copiez les likes existants pour la mise à jour
     let updatedLikes = [...(post.likes || [])];
 
     if (existingReactionIndex !== -1) {
-      // Si l'utilisateur a déjà réagi, vérifiez la réaction actuelle
       const existingReaction = updatedLikes[existingReactionIndex];
-
       if (existingReaction.emoji === emojiType) {
-        // Si l'utilisateur clique sur le même emoji, supprimer la réaction
-        updatedLikes.splice(existingReactionIndex, 1);
+        updatedLikes.splice(existingReactionIndex, 1); // Supprimer la réaction
       } else {
-        // Si l'utilisateur change de réaction, remplacez l'ancienne réaction
-        updatedLikes[existingReactionIndex] = { emoji: emojiType, username: currentUser };
+        updatedLikes[existingReactionIndex] = { emoji: emojiType, username: currentUser }; // Mettre à jour la réaction
       }
     } else {
-      // Si l'utilisateur n'a pas encore réagi, ajoutez une nouvelle réaction
-      updatedLikes.push({ emoji: emojiType, username: currentUser });
+      updatedLikes.push({ emoji: emojiType, username: currentUser }); // Ajouter une nouvelle réaction
     }
 
-    // Mettez à jour Firestore avec la nouvelle structure de likes
     await updateDoc(postRef, {
       likes: updatedLikes
     });
 
-    fetchPosts(); // Rafraîchir les publications après la mise à jour
+    fetchPosts();
   };
 
   const handleMediaPress = (mediaUrl) => {
@@ -88,30 +102,64 @@ const Annonce = () => {
   };
 
   const toggleExpandPost = (postId) => {
-    setExpandedPosts((prevState) => ({
+    setExpandedPosts(prevState => ({
       ...prevState,
-      [postId]: !prevState[postId],
+      [postId]: !prevState[postId]
     }));
   };
 
   const toggleExpandMedia = (postId) => {
-    setExpandedMedia((prevState) => ({
+    setExpandedMedia(prevState => ({
       ...prevState,
-      [postId]: !prevState[postId],
+      [postId]: !prevState[postId]
     }));
   };
 
+
+  // Fonction qui met à jour l'URL du profil de chaque utilisateur
+  // Fonction pour récupérer l'URL du profil d'un utilisateur à partir de son `username`
+  const getUserProfileUrl = async (username) => {
+    try {
+      const usersCollection = collection(db, 'users');
+      const querySnapshot = await getDocs(usersCollection);
+      const userDoc = querySnapshot.docs.find(doc => doc.data().username === username);
+
+      if (userDoc) {
+        return userDoc.data().profileUrl;
+      } else {
+        console.log(`Aucun utilisateur trouvé pour ${username}`);
+        return null; // ou une URL par défaut
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du profil de l\'utilisateur:', error);
+      return null; // ou une URL par défaut
+    }
+  };
+
+  const loadProfileUrls = async () => {
+    let profileUrls = {};
+    for (const post of posts) {
+      const profileUrl = await getUserProfileUrl(post.username);
+      if (profileUrl) {
+        profileUrls[post.username] = profileUrl;
+      }
+    }
+    setUserProfileUrl(profileUrls);
+  };
+
+
+
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Header onGoBack={handleGoBack} content="Annonces" />
+      <View style={{ marginTop: 35, marginBottom: 20 }}>
+        <Header content="Annonces" />
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent} style={styles.scrollView}>
         {posts.map((post) => (
           <View key={post.id} style={styles.postContainer}>
             <View style={styles.header}>
               <Image
-                source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
+                source={{ uri: userProfileUrl[post.username] || 'https://randomuser.me/api/portraits/men/32.jpg' }}
                 style={styles.profilePic}
               />
               <View style={styles.postInfo}>
@@ -159,67 +207,64 @@ const Annonce = () => {
             </View>
 
             <View style={styles.likesSection}>
-  <TouchableOpacity onPress={() => handleLike(post.id, 'like')}>
-    <Text>👍 {Array.isArray(post.likes) ? post.likes.filter(like => like.emoji === 'like').length : 0}</Text>
-  </TouchableOpacity>
-  <TouchableOpacity onPress={() => handleLike(post.id, 'love')}>
-    <Text>❤️ {Array.isArray(post.likes) ? post.likes.filter(like => like.emoji === 'love').length : 0}</Text>
-  </TouchableOpacity>
-  <TouchableOpacity onPress={() => handleLike(post.id, 'laugh')}>
-    <Text>😂 {Array.isArray(post.likes) ? post.likes.filter(like => like.emoji === 'laugh').length : 0}</Text>
-  </TouchableOpacity>
-  <TouchableOpacity onPress={() => handleLike(post.id, 'sad')}>
-    <Text>😢 {Array.isArray(post.likes) ? post.likes.filter(like => like.emoji === 'sad').length : 0}</Text>
-  </TouchableOpacity>
-  <TouchableOpacity onPress={() => navigation.navigate('Comments', { postId: post.id })}>
-    <Text style={styles.commentsCount}>{post.comments?.nombre || 0} 💬</Text>
-  </TouchableOpacity>
-</View>
-
-            <View style={styles.actions}>
               <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  setCurrentPostId(post.id);
-                  setEmojiModalVisible(true);
-                }}>
-                <Text style={styles.actionText}>React</Text>
+                onPress={() => handleLike(post.id, 'like')}
+                style={[
+                  styles.emojiButton,
+                  post.likes.some(like => like.username === currentUser && like.emoji === 'like') && { backgroundColor: '#cce0ff' }, // Arrière-plan plus clair pour "Like"
+                ]}
+              >
+                <FontAwesome name="thumbs-up" size={24} color="blue" />
+                <Text> {post.likes.filter(like => like.emoji === 'like').length}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => navigation.navigate('CommentsPage', { postId: post.id })} style={styles.actionButton}>
-                <Text style={styles.actionText}> Comments</Text>
+              <TouchableOpacity
+                onPress={() => handleLike(post.id, 'love')}
+                style={[
+                  styles.emojiButton,
+                  post.likes.some(like => like.username === currentUser && like.emoji === 'love') && { backgroundColor: '#ffd1dc' }, // Arrière-plan plus clair pour "Love"
+                ]}
+              >
+                <FontAwesome name="heart" size={24} color="red" />
+                <Text> {post.likes.filter(like => like.emoji === 'love').length}</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleLike(post.id, 'laugh')}
+                style={[
+                  styles.emojiButton,
+                  post.likes.some(like => like.username === currentUser && like.emoji === 'laugh') && { backgroundColor: '#fff0b3' }, // Arrière-plan plus clair pour "Laugh"
+                ]}
+              >
+                <FontAwesome5 name="laugh" size={24} color="orange" />
+                <Text> {post.likes.filter(like => like.emoji === 'laugh').length}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleLike(post.id, 'sad')}
+                style={[
+                  styles.emojiButton,
+                  post.likes.some(like => like.username === currentUser && like.emoji === 'sad') && { backgroundColor: '#e0e0e0' }, // Arrière-plan plus clair pour "Sad"
+                ]}
+              >
+                <FontAwesome5 name="sad-tear" size={24} color="gray" />
+                <Text> {post.likes.filter(like => like.emoji === 'sad').length}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('CommentsPage', { announcementId: post.id })}
+                style={styles.emojiButton}
+              >
+                <FontAwesome name="comments" size={24} color="green" />
+                <Text> {post.totalCommentsAndReplies || 0}</Text>
+                </TouchableOpacity>
+
+
             </View>
+
           </View>
         ))}
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={emojiModalVisible}
-        onRequestClose={() => setEmojiModalVisible(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Choose an emoji</Text>
-            <TouchableOpacity style={styles.modalButton} onPress={() => { handleLike(currentPostId, 'like'); setEmojiModalVisible(false); }}>
-              <Text style={styles.modalButtonText}>👍 Like</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalButton} onPress={() => { handleLike(currentPostId, 'love'); setEmojiModalVisible(false); }}>
-              <Text style={styles.modalButtonText}>❤️ Love</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalButton} onPress={() => { handleLike(currentPostId, 'laugh'); setEmojiModalVisible(false); }}>
-              <Text style={styles.modalButtonText}>😂 Laugh</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalButton} onPress={() => { handleLike(currentPostId, 'sad'); setEmojiModalVisible(false); }}>
-              <Text style={styles.modalButtonText}>😢 Sad</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setEmojiModalVisible(false)} style={styles.modalCloseButton}>
-              <Text style={styles.modalCloseButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       <FooterMenu />
     </View>
@@ -229,131 +274,99 @@ const Annonce = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  headerContainer: {
-    backgroundColor: '#f8f9fa',
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: '#fff',
   },
   scrollContent: {
     paddingBottom: 80,
   },
+  scrollView: {
+    flex: 1,
+  },
   postContainer: {
-    margin: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#e1e1e1',
+    backgroundColor: '#fff',
+    marginBottom: 20,
+    padding: 15,
     borderRadius: 8,
-    backgroundColor: '#ffffff',
+    borderTopWidth: 2, // Ajout de la bordure en haut
+    borderTopColor: '#ddd', // Couleur de la bordure
+    shadowColor: '#000',
+    shadowOpacity: 0.2, // Augmentation de l'ombre pour la visibilité
+    shadowOffset: { width: 0, height: -4 }, // Ombre dirigée vers le haut
+    shadowRadius: 8,
+    elevation: 5, // L'élévation peut aussi augmenter l'ombre sur Android
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 10,
   },
   profilePic: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 10,
   },
   postInfo: {
-    flex: 1,
+    marginLeft: 10,
   },
   userName: {
     fontWeight: 'bold',
+    fontSize: 16,
   },
   timestamp: {
     fontSize: 12,
-    color: '#888',
+    color: '#666',
   },
   title: {
-    fontSize: 16,
     fontWeight: 'bold',
-    marginVertical: 5,
+    fontSize: 18,
+    marginBottom: 5,
   },
   postText: {
     fontSize: 14,
-    marginVertical: 5,
-  },
-  moreLessButton: {
-    alignItems: 'flex-start',
-    marginVertical: 5,
+    color: '#333',
   },
   moreLessText: {
-    color: '#007bff',
+    color: '#007BFF',
+    fontSize: 14,
   },
   mediaContainer: {
-    marginVertical: 10,
+    marginTop: 15,
   },
   mediaThumbnail: {
     width: '100%',
     height: 200,
     borderRadius: 8,
+    marginBottom: 20
   },
   videoContainer: {
-    width: '100%',
     height: 200,
     borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 20
   },
   video: {
     width: '100%',
     height: '100%',
   },
+  moreButton: {
+    color: '#007BFF',
+    fontSize: 14,
+    marginTop: 5,
+  },
   likesSection: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  commentsCount: {
-    marginLeft: 10,
-  },
-  actions: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 10,
   },
-  actionButton: {
-    backgroundColor: '#007bff',
+  emojiButton: {
+    backgroundColor: '#f0f0f0', // Arrière-plan gris
     padding: 10,
+    marginHorizontal: 5, // Espacement entre les boutons
     borderRadius: 5,
-  },
-  actionText: {
-    color: '#fff',
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalView: {
-    width: '80%',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    marginBottom: 15,
-  },
-  modalButton: {
-    padding: 10,
-    marginVertical: 5,
-    backgroundColor: '#007bff',
-    borderRadius: 5,
-    width: '100%',
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    color: 'white',
-  },
-  modalCloseButton: {
-    marginTop: 15,
-  },
-  modalCloseButtonText: {
-    color: '#007bff',
+    justifyContent: 'space-between',
   },
 });
 

@@ -1,32 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { getFirestore, doc, getDoc, collection, addDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore'; // Added updateDoc
+import { getFirestore, doc, getDoc, collection, addDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import CommentList from '../components/CommentList';
 import Header from '../components/Header';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAuth } from '../context/authContext';
 
 const db = getFirestore();
 
 export default function CommentPage() {
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState(''); // State for the new comment
-  const [replyingTo, setReplyingTo] = useState(null); // State for the comment being replied to
+  const [newComment, setNewComment] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null); // To store the comment you're replying to
   const navigation = useNavigation();
-  const announcementId = 'OaxvNpOGCSrZkdcdA0P3'; // Adjust to your document ID
+
+  const route = useRouter();
+  const { announcementId } = useLocalSearchParams();
+  console.log('Received announcementId:', announcementId);
+
+  const { user } = useAuth();
+  const userName = user ? user.username : 'Anonymous';
+  const profileImage = user ? user.profileUrl : 'https://www.pngall.com/wp-content/uploads/5/User-Profile-Transparent.png';
 
   const handleGoBack = () => {
-    navigation.goBack(); // Navigate back to the previous screen
+    navigation.goBack();
   };
 
   // Fetch comments from Firestore
   const fetchComments = () => {
-    const commentsRef = collection(db, 'annonces', announcementId, 'comments'); // Reference to the comments sub-collection
-
-    // Use onSnapshot to listen for changes in real-time
+    const commentsRef = collection(db, 'annonces', announcementId, 'comments');
     onSnapshot(commentsRef, (snapshot) => {
       const fetchedComments = snapshot.docs.map(doc => ({
-        id: doc.id, // Use Firestore document ID as the comment ID
+        id: doc.id,
         ...doc.data(),
       }));
       setComments(fetchedComments);
@@ -35,7 +42,7 @@ export default function CommentPage() {
 
   useEffect(() => {
     fetchComments();
-  }, []); // Fetch comments when the component mounts
+  }, []);
 
   // Function to handle comment deletion
   const handleDeleteComment = (commentId) => {
@@ -49,7 +56,7 @@ export default function CommentPage() {
           onPress: async () => {
             try {
               const commentRef = doc(db, 'annonces', announcementId, 'comments', commentId);
-              await deleteDoc(commentRef); // Delete the comment document
+              await deleteDoc(commentRef);
             } catch (error) {
               console.error('Error deleting comment:', error);
             }
@@ -61,13 +68,21 @@ export default function CommentPage() {
   };
 
   // Function to handle replying to a comment
-  const handleReplyToComment = (commentId, userName) => {
-    setReplyingTo({ commentId, userName }); // Set the state with the comment ID and username being replied to
+  const handleReplyToComment = async (commentId) => {
+    try {
+      const commentDocRef = doc(db, 'annonces', announcementId, 'comments', commentId);
+      const commentSnapshot = await getDoc(commentDocRef);
+      if (commentSnapshot.exists()) {
+        const commentData = commentSnapshot.data();
+        setReplyingTo({ commentId, userName: commentData.userName }); // Store the comment's userName for reply
+      }
+    } catch (error) {
+      console.error('Error fetching comment to reply to:', error);
+    }
   };
 
-  // Function to cancel replying to a comment
   const handleCancelReply = () => {
-    setReplyingTo(null); // Reset the replying state
+    setReplyingTo(null);
   };
 
   // Function to add a new comment or reply
@@ -77,40 +92,32 @@ export default function CommentPage() {
       return;
     }
 
-    const commentData = {
-      userName: 'YourUsername', // Replace with actual username
-      profileImage: 'https://path-to-profile-image.jpg', // Replace with actual profile image URL
-      time: new Date().toISOString(), // Replace with actual time
-      text: newComment,
-      replies: [],
-    };
-
     try {
       const commentsRef = collection(db, 'annonces', announcementId, 'comments');
       if (replyingTo) {
-        // If replying to a comment, add the reply to the appropriate comment's replies array
+        // Replying to a comment
         const commentDocRef = doc(db, 'annonces', announcementId, 'comments', replyingTo.commentId);
         const commentSnapshot = await getDoc(commentDocRef);
         const commentData = commentSnapshot.data();
-
-        // Check if the current comment already has replies
         const updatedReplies = [...commentData.replies, {
-          userName: 'YourUsername', // Replace with actual username
+          userName: userName,
           text: newComment,
           time: new Date().toISOString(),
-          replies: [], // Initialize replies for the new reply
         }];
-
-        // Update the comment's replies
         await updateDoc(commentDocRef, { replies: updatedReplies });
-        
-        setReplyingTo(null); // Reset the replying state
+        setReplyingTo(null);
       } else {
-        // Add new comment as a document
+        // Adding a new comment
+        const commentData = {
+          userName: userName,
+          profileImage: profileImage,
+          time: new Date().toISOString(),
+          text: newComment,
+          replies: [],
+        };
         await addDoc(commentsRef, commentData);
       }
-
-      setNewComment(''); // Clear the input field after submission
+      setNewComment('');
     } catch (error) {
       console.error('Error adding comment:', error);
     }
@@ -120,32 +127,35 @@ export default function CommentPage() {
     <View style={styles.container}>
       <Header onGoBack={handleGoBack} content="Comments"/>
 
-      {/* Use the CommentList component to display the comments */}
+      {/* Display the comments */}
       <CommentList 
         comments={comments} 
         onDelete={handleDeleteComment} 
         onReply={handleReplyToComment} 
       />
 
-      {/* If replying to a comment, show the reply info */}
+      {/* Replying to comment UI */}
       {replyingTo && (
         <View style={styles.replyInfo}>
-          <Text>Replying to {replyingTo.userName}</Text>
+          <Text>
+          Replying to <Text style={styles.userName}>{replyingTo.userName}</Text>
+          </Text>
           <TouchableOpacity onPress={handleCancelReply}>
             <FontAwesome name="times" size={20} color="red" />
           </TouchableOpacity>
         </View>
       )}
 
+      {/* Add a comment */}
       <View style={styles.addComment}>
         <TextInput 
           style={styles.input} 
           placeholder="Add a comment..."
           value={newComment} 
-          onChangeText={setNewComment} // Update state with input
+          onChangeText={setNewComment} 
         />
         <TouchableOpacity onPress={handleAddComment}>
-          <FontAwesome name="gift" size={24} color="black" />
+          <FontAwesome name="send" size={24} color="black" />
         </TouchableOpacity>
       </View>
     </View>
@@ -158,24 +168,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     paddingTop: 50,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerIcons: {
-    flexDirection: 'row',
-  },
   replyInfo: {
     flexDirection: 'row',
+    justifyContent: 'space-between',  // Ajoute de l'espace entre le texte et le bouton
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -196,5 +191,9 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     borderRadius: 20,
     marginRight: 10,
+  },
+  userName: {
+    fontWeight: 'bold',
+    color: '#007BFF', 
   },
 });

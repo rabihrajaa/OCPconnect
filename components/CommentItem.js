@@ -1,46 +1,106 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Image, StyleSheet, TextInput } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, Modal, Image, StyleSheet } from 'react-native';
 import { Menu, MenuOptions, MenuTrigger, MenuOption } from 'react-native-popup-menu';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function CommentItem({ comment, onDelete, onReply, onDeleteReply }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isReplying, setIsReplying] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+  const [profileUrl, setProfileUrl] = useState(null);
+  const [replyProfileUrl, setReplyProfileUrl] = useState(null); // Pour stocker l'URL de l'image de profil du replyingUser
+  const db = getFirestore(); // Initialiser Firestore
+  const emojiList = [
+    { name: 'like', emoji: '👍', color: '#F4EDD5' },  // Bleu pour "like"
+    { name: 'love', emoji: '❤️', color: '#F8B9BA' },  // Rouge pour "love"
+    { name: 'laugh', emoji: '😂', color: '#E2EAF4' }, // Jaune pour "laugh"
+    { name: 'sad', emoji: '😢', color: '#D2F1C6' },   // Bleu clair pour "sad"
+  ];
+
+  // Appeler la fonction pour récupérer l'URL de l'image de profil du commentateur
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const user = await getUserByUsername(comment.userName);
+      if (user && user.profileUrl) {
+        setProfileUrl(user.profileUrl); // Stocker l'URL de l'image dans l'état
+      }
+    };
+    fetchUserProfile();
+  }, [comment.userName]);
+
+  // Fonction pour rechercher un utilisateur par son username
+  const getUserByUsername = async (username) => {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('username', '==', username));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userData = querySnapshot.docs[0].data();
+        return { id: querySnapshot.docs[0].id, ...userData };
+      } else {
+        console.log('User not found');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error finding user:', error);
+      return null;
+    }
+  };
 
   const handleDeleteComment = () => {
     onDelete(comment.id);
   };
 
-
   const openEmojiPicker = () => {
     setIsModalVisible(true);
   };
 
-  const emojiList = [
-    'emoji-emotions', 'emoji-people', 'emoji-nature', 'emoji-objects', 'emoji-symbols', 'emoji-flags',
-    'sentiment-satisfied', 'sentiment-dissatisfied', 'sentiment-neutral', 'sentiment-very-satisfied', 'sentiment-very-dissatisfied'
-  ];
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
   };
+
+  // Appeler la fonction pour récupérer l'image de profil de chaque replyingUser
+  useEffect(() => {
+    const fetchReplyUserProfiles = async () => {
+      const profiles = await Promise.all(comment.replies.map(async (reply) => {
+        const replyUser = await getUserByUsername(reply.userName);
+        return replyUser ? replyUser.profileUrl : null;
+      }));
+      setReplyProfileUrl(profiles);
+    };
+
+    if (comment.replies && comment.replies.length > 0) {
+      fetchReplyUserProfiles();
+    }
+  }, [comment.replies]);
+
+  const handleEmojiSelect = async (emoji) => {
+    try {
+      const commentRef = doc(db, 'comments', comment.id); // Remplace par 'replies' si c'est une réponse
+      await updateDoc(commentRef, {
+        reactions: arrayUnion({ emoji, username: auth.currentUser.displayName })
+      });
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error('Error updating emoji reaction:', error);
+    }
+  };
+
 
   return (
     <View style={styles.commentContainer}>
-      <Image source={{ uri: comment.profilePicUrl || "https://www.globalfabrications.in/images/user-Icon.jpg" }} style={styles.profileImage} />
+      <Image source={{ uri: profileUrl || "https://cdn-icons-png.flaticon.com/512/4537/4537069.png" }} style={styles.profileImage} />
       <View style={styles.commentContent}>
         <View style={styles.headerContainer}>
-          <Text style={styles.username}>{comment.username || "username"}</Text>
-          <Text style={styles.timestamp}>{formatDate(comment.createdAt)}</Text>
+          <Text style={styles.username}>{comment.userName || "username"}</Text>
+          <Text style={styles.timestamp}>{formatDate(comment.time)}</Text>
         </View>
         <Text style={styles.commentText}>{comment.text}</Text>
         <View style={styles.actionsContainer}>
-          <TouchableOpacity onPress={() =>onReply(comment.id)}>
+          <TouchableOpacity onPress={() => onReply(comment.id)}>
             <Icon name="reply" size={18} color="#666" />
           </TouchableOpacity>
           <Menu>
@@ -64,15 +124,17 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
           </TouchableOpacity>
         )}
 
-        {showReplies && comment.replies && comment.replies.map((reply) => (
+        {showReplies && comment.replies && comment.replies.map((reply, index) => (
           <View key={reply.id} style={styles.replyContainer}>
-            <Image source={{ uri: reply.profilePicUrl || "https://www.globalfabrications.in/images/user-Icon.jpg" }} style={styles.replyProfileImage} />
+            <Image source={{ uri: replyProfileUrl[index] || "https://www.globalfabrications.in/images/user-Icon.jpg" }} style={styles.replyProfileImage} />
             <View style={styles.commentContent}>
               <View style={styles.headerContainer}>
-                <Text style={styles.username}>{reply.username || "username"}</Text>
-                <Text style={styles.timestamp}>{formatDate(reply.createdAt)}</Text>
+                <Text style={styles.username}>{reply.userName || "username"}</Text>
+                <Text style={styles.timestamp}>{formatDate(reply.time)}</Text>
               </View>
-              <Text style={styles.commentText}>{reply.text}</Text>
+              <Text style={styles.commentText}>
+                <Text style={styles.userName}>@{comment.userName}</Text> {reply.text}
+              </Text>
               <View style={styles.actionsContainer}>
                 <TouchableOpacity onPress={() => onReply(comment.id)}>
                   <Icon name="reply" size={18} color="#666" />
@@ -99,11 +161,17 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
               <Text style={styles.modalTitle}>Choose an Emoji</Text>
               <View style={styles.emojiList}>
                 {emojiList.map((emoji) => (
-                  <TouchableOpacity key={emoji} style={styles.emojiButton} onPress={() => setIsModalVisible(false)}>
-                    <Icon name={emoji} size={32} color="#fff" />
+                  <TouchableOpacity
+                    key={emoji.name}
+                    style={[styles.emojiButton, { backgroundColor: emoji.color }]}
+                    onPress={() => handleEmojiSelect(emoji.name)}
+                  >
+                    <Text style={styles.emojiText}>{emoji.emoji}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
+
+
               <TouchableOpacity onPress={() => setIsModalVisible(false)}>
                 <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
@@ -133,9 +201,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  username: {
+  userName: {
     fontWeight: 'bold',
-    fontSize: 14,
+    color: '#007BFF',
   },
   timestamp: {
     fontSize: 12,
@@ -150,10 +218,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  
   showRepliesButton: {
     marginTop: 5,
-    alignSelf: 'flex-end', // Move the button to the right
+    alignSelf: 'flex-end',
   },
   showRepliesText: {
     color: '#007BFF',
@@ -168,40 +235,46 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
-    backgroundColor: '#7a35f0', // Solid background color instead of gradient
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#fff',
-  },
-  emojiList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  emojiButton: {
-    marginBottom: 10,
-    marginHorizontal: 5,
-    backgroundColor: '#e67e22', // Adding a background color to each emoji button
-    borderRadius: 8,
-    padding: 5,
-  },
-  modalCloseText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+    modalContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',  // Assombrir l'arrière-plan
+    },
+    modalContent: {
+      width: '85%',
+      borderRadius: 20,
+      padding: 20,
+      alignItems: 'center',
+      backgroundColor: '#fff',  // Fond blanc pour le modal
+      elevation: 5,  // Ajouter une ombre pour l'effet d'élévation
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 20,
+      color: '#333',
+    },
+    emojiList: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginBottom: 20,
+    },
+    emojiButton: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginHorizontal: 10,
+      elevation: 2,  // Légère ombre pour les boutons emojis
+    },
+    emojiText: {
+      fontSize: 30,  // Emoji plus grand et visible
+    },
+    modalCloseText: {
+      fontSize: 18,
+      color: '#007BFF',
+      fontWeight: 'bold',
+    },  
 });

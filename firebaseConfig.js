@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase if it hasn't been initialized yet
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Firebase Authentication and Firestore
 let auth;
@@ -34,3 +34,5 @@ export const db = getFirestore(app);
 // Firestore references
 export const userRef = collection(db, 'users');
 export const roomRef = collection(db, 'rooms');
+
+
