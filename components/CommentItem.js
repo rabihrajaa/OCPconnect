@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Image, StyleSheet, Alert } from 'react-native';
 import { Menu, MenuOptions, MenuTrigger, MenuOption } from 'react-native-popup-menu';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 
-export default function CommentItem({ comment, onDelete, onReply, onDeleteReply }) {
+export default function CommentItem({ comment, annonceId, currentUserName, onDelete, onReply, onDeleteReply }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isModalReplayVisible, setisModalReplayVisible] = useState(false);
+  
   const [showReplies, setShowReplies] = useState(false);
   const [profileUrl, setProfileUrl] = useState(null);
+  const [selectedReplyId, setSelectedReplyId] = useState(null);
+
   const [replyProfileUrl, setReplyProfileUrl] = useState(null); // Pour stocker l'URL de l'image de profil du replyingUser
   const db = getFirestore(); // Initialiser Firestore
   const emojiList = [
@@ -56,7 +60,6 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
     setIsModalVisible(true);
   };
 
-
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
@@ -77,19 +80,103 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
     }
   }, [comment.replies]);
 
-  const handleEmojiSelect = async (emoji) => {
+  const handleEmojiSelect = async (emoji) => { 
     try {
-      const commentRef = doc(db, 'comments', comment.id); // Remplace par 'replies' si c'est une réponse
-      await updateDoc(commentRef, {
-        reactions: arrayUnion({ emoji, username: auth.currentUser.displayName })
-      });
-      setIsModalVisible(false);
+      const db = getFirestore(); // Initialisez Firestore ici
+  
+      // Reference to the specific comment document in the 'annonces' collection
+      const commentDocRef = doc(db, 'annonces', annonceId, 'comments', comment.id); // Correction de la référence
+      
+      // Get the document snapshot
+      const commentSnapshot = await getDoc(commentDocRef);
+      
+      if (commentSnapshot.exists()) {
+        // Get current data from the comment document
+        const commentData = commentSnapshot.data();
+          const existingReactions = commentData.likes || [];
+        
+        // Find if the current user has already reacted
+        const existingReactionIndex = existingReactions.findIndex(reaction => reaction.username === currentUserName);
+    
+        if (existingReactionIndex >= 0) {
+          // User has already reacted; check if the emoji is the same
+          if (existingReactions[existingReactionIndex].emoji === emoji) {
+            // Same reaction, remove it
+            existingReactions.splice(existingReactionIndex, 1);
+          } else {
+            // Different reaction, update the emoji
+            existingReactions[existingReactionIndex].emoji = emoji;
+          }
+        } else {
+          // No previous reaction, add a new one
+          existingReactions.push({ emoji, username: currentUserName });
+        }
+        // Update the comment document with the new likes array
+        await updateDoc(commentDocRef, { likes: existingReactions });
+        
+      }
     } catch (error) {
-      console.error('Error updating emoji reaction:', error);
+      console.error('Error handling reaction:', error);
     }
   };
+  
 
+  const openEmojiPickerReplay = (replyId) => {
+    setSelectedReplyId(replyId);
+    setisModalReplayVisible(true);
+  };
+  
+  const handleReplyEmojiSelect = async (replyIndex, emoji) => { 
+    try {
+      const db = getFirestore(); // Initialisez Firestore ici
+  
+      // Référence au document du commentaire dans 'annonces'
+      const commentDocRef = doc(db, 'annonces', annonceId, 'comments', comment.id);
+  
+      // Récupérer le snapshot du commentaire
+      const commentSnapshot = await getDoc(commentDocRef);
+  
+      if (commentSnapshot.exists()) {
+        // Obtenir les données actuelles du commentaire
+        const commentData = commentSnapshot.data();
+        const replies = commentData.replies || [];
+  
+        // Trouver la réponse spécifique
+       // const replyIndex = replies.findIndex(reply => reply.id === replyId);
+  
+        if (replyIndex >= 0) {
+          const existingReactions = replies[replyIndex].likes || [];
+  
+          // Vérifier si l'utilisateur a déjà réagi
+          const existingReactionIndex = existingReactions.findIndex(reaction => reaction.username === currentUserName);
+  
+          if (existingReactionIndex >= 0) {
+            if (existingReactions[existingReactionIndex].emoji === emoji) {
+              // Même réaction, la supprimer
+              existingReactions.splice(existingReactionIndex, 1);
+            } else {
+              // Réaction différente, mettre à jour
+              existingReactions[existingReactionIndex].emoji = emoji;
+            }
+          } else {
+            // Pas de réaction précédente, en ajouter une nouvelle
+            existingReactions.push({ emoji, username: currentUserName });
+          }
+  
+          // Mettre à jour la réaction dans la réponse spécifique
+          replies[replyIndex].likes = existingReactions;
+  
+          // Mettre à jour le document du commentaire avec les nouvelles réponses
+          await updateDoc(commentDocRef, { replies });
+        }
+      }
+    } catch (error) {
+      console.error('Error handling reply reaction:', error);
+    }
+  };
+  
 
+  
   return (
     <View style={styles.commentContainer}>
       <Image source={{ uri: profileUrl || "https://cdn-icons-png.flaticon.com/512/4537/4537069.png" }} style={styles.profileImage} />
@@ -147,7 +234,7 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
                     <MenuOption onSelect={() => onDeleteReply(comment.id, reply.id)} text="Delete Reply" />
                   </MenuOptions>
                 </Menu>
-                <TouchableOpacity onPress={openEmojiPicker}>
+                <TouchableOpacity onPress={() => openEmojiPickerReplay(index)}>
                   <Icon name="emoji-emotions" size={18} color="#666" />
                 </TouchableOpacity>
               </View>
@@ -171,13 +258,36 @@ export default function CommentItem({ comment, onDelete, onReply, onDeleteReply 
                 ))}
               </View>
 
-
               <TouchableOpacity onPress={() => setIsModalVisible(false)}>
                 <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
+
+        <Modal visible={isModalReplayVisible} transparent={true} animationType="slide">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Choose an Emoji</Text>
+              <View style={styles.emojiList}>
+                {emojiList.map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji.name}
+                    style={[styles.emojiButton, { backgroundColor: emoji.color }]}
+                    onPress={() => handleReplyEmojiSelect(selectedReplyId,emoji.name)}
+                  >
+                    <Text style={styles.emojiText}>{emoji.emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity onPress={() => setisModalReplayVisible(false)}>
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
       </View>
     </View>
   );
@@ -278,3 +388,5 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
     },  
 });
+
+

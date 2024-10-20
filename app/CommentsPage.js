@@ -13,13 +13,11 @@ const db = getFirestore();
 export default function CommentPage() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
-  const [replyingTo, setReplyingTo] = useState(null); // To store the comment you're replying to
+  const [replyingTo, setReplyingTo] = useState(null);
   const navigation = useNavigation();
 
   const route = useRouter();
   const { announcementId } = useLocalSearchParams();
-  console.log('Received announcementId:', announcementId);
-
   const { user } = useAuth();
   const userName = user ? user.username : 'Anonymous';
   const profileImage = user ? user.profileUrl : 'https://www.pngall.com/wp-content/uploads/5/User-Profile-Transparent.png';
@@ -28,7 +26,41 @@ export default function CommentPage() {
     navigation.goBack();
   };
 
-  // Fetch comments from Firestore
+  // Fonction pour gérer l'ajout ou la mise à jour d'une réaction
+  const handleReaction = async (commentId, emoji) => {
+    try {
+      const commentDocRef = doc(db, 'annonces', announcementId, 'comments', commentId); // Utilisation correcte de 'doc'
+      const commentSnapshot = await getDoc(commentDocRef);
+
+      if (commentSnapshot.exists()) {
+        const commentData = commentSnapshot.data();
+        const existingReactions = commentData.likes || [];
+
+        const existingReactionIndex = existingReactions.findIndex(reaction => reaction.username === userName);
+
+        if (existingReactionIndex >= 0) {
+          if (existingReactions[existingReactionIndex].emoji === emoji) {
+            existingReactions.splice(existingReactionIndex, 1); // Supprimer la réaction
+          } else {
+            existingReactions[existingReactionIndex].emoji = emoji; // Mettre à jour la réaction
+          }
+        } else {
+          existingReactions.push({ emoji, username: userName });
+        }
+
+        await updateDoc(commentDocRef, { likes: existingReactions });
+      }
+    } catch (error) {
+      console.error('Error handling reaction:', error);
+    }
+  };
+
+
+  // Compter les réactions par emoji
+  const countReactions = (reactions, emoji) => {
+    return reactions ? reactions.filter(reaction => reaction.emoji === emoji).length : 0;
+  };
+
   const fetchComments = () => {
     const commentsRef = collection(db, 'annonces', announcementId, 'comments');
     onSnapshot(commentsRef, (snapshot) => {
@@ -44,7 +76,7 @@ export default function CommentPage() {
     fetchComments();
   }, []);
 
-  // Function to handle comment deletion
+  // Fonction pour supprimer un commentaire
   const handleDeleteComment = (commentId) => {
     Alert.alert(
       "Delete Comment",
@@ -67,14 +99,14 @@ export default function CommentPage() {
     );
   };
 
-  // Function to handle replying to a comment
+  // Fonction pour répondre à un commentaire
   const handleReplyToComment = async (commentId) => {
     try {
       const commentDocRef = doc(db, 'annonces', announcementId, 'comments', commentId);
       const commentSnapshot = await getDoc(commentDocRef);
       if (commentSnapshot.exists()) {
         const commentData = commentSnapshot.data();
-        setReplyingTo({ commentId, userName: commentData.userName }); // Store the comment's userName for reply
+        setReplyingTo({ commentId, userName: commentData.userName });
       }
     } catch (error) {
       console.error('Error fetching comment to reply to:', error);
@@ -85,7 +117,7 @@ export default function CommentPage() {
     setReplyingTo(null);
   };
 
-  // Function to add a new comment or reply
+  // Ajouter un nouveau commentaire ou une réponse
   const handleAddComment = async () => {
     if (newComment.trim() === '') {
       Alert.alert('Comment cannot be empty!');
@@ -95,7 +127,6 @@ export default function CommentPage() {
     try {
       const commentsRef = collection(db, 'annonces', announcementId, 'comments');
       if (replyingTo) {
-        // Replying to a comment
         const commentDocRef = doc(db, 'annonces', announcementId, 'comments', replyingTo.commentId);
         const commentSnapshot = await getDoc(commentDocRef);
         const commentData = commentSnapshot.data();
@@ -107,7 +138,6 @@ export default function CommentPage() {
         await updateDoc(commentDocRef, { replies: updatedReplies });
         setReplyingTo(null);
       } else {
-        // Adding a new comment
         const commentData = {
           userName: userName,
           profileImage: profileImage,
@@ -125,20 +155,23 @@ export default function CommentPage() {
 
   return (
     <View style={styles.container}>
-      <Header onGoBack={handleGoBack} content="Comments"/>
+      <Header onGoBack={handleGoBack} content="Comments" />
 
-      {/* Display the comments */}
-      <CommentList 
-        comments={comments} 
-        onDelete={handleDeleteComment} 
-        onReply={handleReplyToComment} 
+      {/* Affichage des commentaires */}
+      <CommentList
+        annonceId={announcementId}
+        currentUserName={userName}
+        comments={comments}
+        onDelete={handleDeleteComment}
+        onReply={handleReplyToComment}
+        onReaction={handleReaction}  // Ajouter la gestion des réactions
       />
 
-      {/* Replying to comment UI */}
+      {/* UI pour la réponse à un commentaire */}
       {replyingTo && (
         <View style={styles.replyInfo}>
           <Text>
-          Replying to <Text style={styles.userName}>{replyingTo.userName}</Text>
+            Replying to <Text style={styles.userName}>{replyingTo.userName}</Text>
           </Text>
           <TouchableOpacity onPress={handleCancelReply}>
             <FontAwesome name="times" size={20} color="red" />
@@ -146,13 +179,13 @@ export default function CommentPage() {
         </View>
       )}
 
-      {/* Add a comment */}
+      {/* Ajouter un commentaire */}
       <View style={styles.addComment}>
-        <TextInput 
-          style={styles.input} 
+        <TextInput
+          style={styles.input}
           placeholder="Add a comment..."
-          value={newComment} 
-          onChangeText={setNewComment} 
+          value={newComment}
+          onChangeText={setNewComment}
         />
         <TouchableOpacity onPress={handleAddComment}>
           <FontAwesome name="send" size={24} color="black" />
@@ -170,7 +203,7 @@ const styles = StyleSheet.create({
   },
   replyInfo: {
     flexDirection: 'row',
-    justifyContent: 'space-between',  // Ajoute de l'espace entre le texte et le bouton
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -194,6 +227,6 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontWeight: 'bold',
-    color: '#007BFF', 
+    color: '#007BFF',
   },
 });
