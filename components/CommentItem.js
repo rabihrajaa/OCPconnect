@@ -7,10 +7,12 @@ import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayU
 export default function CommentItem({ comment, annonceId, currentUserName, onDelete, onReply, onDeleteReply }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isModalReplayVisible, setisModalReplayVisible] = useState(false);
-  
+
   const [showReplies, setShowReplies] = useState(false);
   const [profileUrl, setProfileUrl] = useState(null);
   const [selectedReplyId, setSelectedReplyId] = useState(null);
+  const [topReactions, setTopReactions] = useState([]);
+  const [totalReactions, setTotalReactions] = useState(0);
 
   const [replyProfileUrl, setReplyProfileUrl] = useState(null); // Pour stocker l'URL de l'image de profil du replyingUser
   const db = getFirestore(); // Initialiser Firestore
@@ -31,6 +33,32 @@ export default function CommentItem({ comment, annonceId, currentUserName, onDel
     };
     fetchUserProfile();
   }, [comment.userName]);
+
+  useEffect(() => {
+    const countAllReactions = () => {
+      // Créez un objet pour stocker le compte de chaque emoji
+      const reactionCount = comment.likes.reduce((acc, reaction) => {
+        // Si l'emoji existe déjà dans l'objet, incrémentez le compte, sinon initialisez à 1
+        acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Formatez les réactions en un tableau avec l'emoji et le nombre
+      const formattedReactions = Object.entries(reactionCount).map(([emoji, count]) => ({
+        emoji: emojiList.find(e => e.name === emoji)?.emoji || emoji,
+        count,
+      }));
+
+      // Mettez à jour l'état avec la liste complète des emojis et leur nombre
+      setTopReactions(formattedReactions);
+      setTotalReactions(Object.values(reactionCount).reduce((a, b) => a + b, 0)); // Total des réactions
+    };
+
+    if (comment.likes && comment.likes.length > 0) {
+      countAllReactions();
+    }
+  }, [comment.likes]);
+
 
   // Fonction pour rechercher un utilisateur par son username
   const getUserByUsername = async (username) => {
@@ -80,24 +108,24 @@ export default function CommentItem({ comment, annonceId, currentUserName, onDel
     }
   }, [comment.replies]);
 
-  const handleEmojiSelect = async (emoji) => { 
+  const handleEmojiSelect = async (emoji) => {
     try {
       const db = getFirestore(); // Initialisez Firestore ici
-  
+
       // Reference to the specific comment document in the 'annonces' collection
       const commentDocRef = doc(db, 'annonces', annonceId, 'comments', comment.id); // Correction de la référence
-      
+
       // Get the document snapshot
       const commentSnapshot = await getDoc(commentDocRef);
-      
+
       if (commentSnapshot.exists()) {
         // Get current data from the comment document
         const commentData = commentSnapshot.data();
-          const existingReactions = commentData.likes || [];
-        
+        const existingReactions = commentData.likes || [];
+
         // Find if the current user has already reacted
         const existingReactionIndex = existingReactions.findIndex(reaction => reaction.username === currentUserName);
-    
+
         if (existingReactionIndex >= 0) {
           // User has already reacted; check if the emoji is the same
           if (existingReactions[existingReactionIndex].emoji === emoji) {
@@ -113,43 +141,43 @@ export default function CommentItem({ comment, annonceId, currentUserName, onDel
         }
         // Update the comment document with the new likes array
         await updateDoc(commentDocRef, { likes: existingReactions });
-        
+        setIsModalVisible(false);
       }
     } catch (error) {
       console.error('Error handling reaction:', error);
     }
   };
-  
+
 
   const openEmojiPickerReplay = (replyId) => {
     setSelectedReplyId(replyId);
     setisModalReplayVisible(true);
   };
-  
-  const handleReplyEmojiSelect = async (replyIndex, emoji) => { 
+
+  const handleReplyEmojiSelect = async (replyIndex, emoji) => {
     try {
       const db = getFirestore(); // Initialisez Firestore ici
-  
+
       // Référence au document du commentaire dans 'annonces'
       const commentDocRef = doc(db, 'annonces', annonceId, 'comments', comment.id);
-  
+
       // Récupérer le snapshot du commentaire
       const commentSnapshot = await getDoc(commentDocRef);
-  
+
       if (commentSnapshot.exists()) {
         // Obtenir les données actuelles du commentaire
         const commentData = commentSnapshot.data();
         const replies = commentData.replies || [];
-  
+
         // Trouver la réponse spécifique
-       // const replyIndex = replies.findIndex(reply => reply.id === replyId);
-  
+        // const replyIndex = replies.findIndex(reply => reply.id === replyId);
+
         if (replyIndex >= 0) {
           const existingReactions = replies[replyIndex].likes || [];
-  
+
           // Vérifier si l'utilisateur a déjà réagi
           const existingReactionIndex = existingReactions.findIndex(reaction => reaction.username === currentUserName);
-  
+
           if (existingReactionIndex >= 0) {
             if (existingReactions[existingReactionIndex].emoji === emoji) {
               // Même réaction, la supprimer
@@ -162,21 +190,22 @@ export default function CommentItem({ comment, annonceId, currentUserName, onDel
             // Pas de réaction précédente, en ajouter une nouvelle
             existingReactions.push({ emoji, username: currentUserName });
           }
-  
+
           // Mettre à jour la réaction dans la réponse spécifique
           replies[replyIndex].likes = existingReactions;
-  
+
           // Mettre à jour le document du commentaire avec les nouvelles réponses
           await updateDoc(commentDocRef, { replies });
+          setisModalReplayVisible(false);
         }
       }
     } catch (error) {
       console.error('Error handling reply reaction:', error);
     }
   };
-  
 
-  
+
+
   return (
     <View style={styles.commentContainer}>
       <Image source={{ uri: profileUrl || "https://cdn-icons-png.flaticon.com/512/4537/4537069.png" }} style={styles.profileImage} />
@@ -186,6 +215,19 @@ export default function CommentItem({ comment, annonceId, currentUserName, onDel
           <Text style={styles.timestamp}>{formatDate(comment.time)}</Text>
         </View>
         <Text style={styles.commentText}>{comment.text}</Text>
+        {/* Afficher les trois emojis les plus fréquents */}
+        {topReactions.length > 0 && (
+          <View style={styles.reactionsContainer}>
+            {/* Afficher tous les emojis avec leur nombre */}
+            {topReactions.map((reaction, index) => (
+              <Text key={index} style={styles.reactionItem}>
+                {reaction.emoji} {reaction.count}
+              </Text>
+            ))}
+            <Text style={styles.totalReactions}>{totalReactions} Reactions</Text>
+          </View>
+        )}
+
         <View style={styles.actionsContainer}>
           <TouchableOpacity onPress={() => onReply(comment.id)}>
             <Icon name="reply" size={18} color="#666" />
@@ -274,7 +316,7 @@ export default function CommentItem({ comment, annonceId, currentUserName, onDel
                   <TouchableOpacity
                     key={emoji.name}
                     style={[styles.emojiButton, { backgroundColor: emoji.color }]}
-                    onPress={() => handleReplyEmojiSelect(selectedReplyId,emoji.name)}
+                    onPress={() => handleReplyEmojiSelect(selectedReplyId, emoji.name)}
                   >
                     <Text style={styles.emojiText}>{emoji.emoji}</Text>
                   </TouchableOpacity>
@@ -345,48 +387,60 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
   },
-    modalContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',  // Assombrir l'arrière-plan
-    },
-    modalContent: {
-      width: '85%',
-      borderRadius: 20,
-      padding: 20,
-      alignItems: 'center',
-      backgroundColor: '#fff',  // Fond blanc pour le modal
-      elevation: 5,  // Ajouter une ombre pour l'effet d'élévation
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      marginBottom: 20,
-      color: '#333',
-    },
-    emojiList: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      marginBottom: 20,
-    },
-    emojiButton: {
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginHorizontal: 10,
-      elevation: 2,  // Légère ombre pour les boutons emojis
-    },
-    emojiText: {
-      fontSize: 30,  // Emoji plus grand et visible
-    },
-    modalCloseText: {
-      fontSize: 18,
-      color: '#007BFF',
-      fontWeight: 'bold',
-    },  
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',  // Assombrir l'arrière-plan
+  },
+  modalContent: {
+    width: '85%',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#fff',  // Fond blanc pour le modal
+    elevation: 5,  // Ajouter une ombre pour l'effet d'élévation
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#333',
+  },
+  emojiList: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  emojiButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 10,
+    elevation: 2,  // Légère ombre pour les boutons emojis
+  },
+  emojiText: {
+    fontSize: 30,  // Emoji plus grand et visible
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: '#007BFF',
+    fontWeight: 'bold',
+  },
+  reactionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  reactionItem: {
+    marginRight: 15,
+    fontSize: 16,
+  },
+  totalReactions: {
+    fontWeight: 'bold',
+  },
 });
 
 
